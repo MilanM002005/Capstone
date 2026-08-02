@@ -1,0 +1,412 @@
+Given everything we've decided, I would define **Phase 1** as **"Establish Communication & Basic Vehicle Control."**
+
+The goal is **not** to build a UI. The goal is to prove that your GCS can reliably communicate with the Cube Orange.
+
+---
+
+# Phase 1 — Communication & Vehicle Control
+
+## Objective
+
+> Establish a stable MAVLink connection between the Jetson Nano and Cube Orange, expose telemetry through a backend API, and implement essential vehicle control commands.
+
+---
+
+# Deliverables
+
+By the end of Phase 1 you should be able to:
+
+* Connect to Cube Orange over USB
+* Detect connection/disconnection
+* Read live telemetry
+* Arm / Disarm
+* Change vehicle modes
+* Display telemetry on the UI
+* View connection status
+* View live logs
+
+Nothing else.
+
+---
+
+# Backend
+
+## Connection Manager
+
+Responsible for
+
+* Detect serial ports
+* Connect
+* Disconnect
+* Reconnect automatically
+* Heartbeat monitoring
+
+Example
+
+```text
+Status
+
+Disconnected
+
+↓
+
+Connecting
+
+↓
+
+Connected
+
+↓
+
+Lost Connection
+
+↓
+
+Reconnecting
+```
+
+---
+
+## MAVLink Manager
+
+Responsible for
+
+* Reading MAVLink packets
+* Sending MAVLink commands
+* Packet parsing
+* Message routing
+
+No business logic here.
+
+---
+
+## Telemetry Service
+
+Maintain current vehicle state.
+
+Fields
+
+```text
+Connected
+
+Armed
+
+Mode
+
+Latitude
+
+Longitude
+
+Heading
+
+Ground Speed
+
+Battery Voltage
+
+Battery Remaining
+
+GPS Fix
+
+Satellite Count
+
+Heartbeat Status
+```
+
+---
+
+## Vehicle Service
+
+Functions
+
+```text
+Arm
+
+Disarm
+
+Set Mode
+
+Reboot FC (optional)
+
+Request Parameters (later)
+```
+
+---
+
+## Logger
+
+Log
+
+```text
+Connected
+
+Disconnected
+
+Mode Changed
+
+Vehicle Armed
+
+Vehicle Disarmed
+
+Heartbeat Lost
+
+Errors
+```
+
+---
+
+# Frontend
+
+## Dashboard
+
+Show
+
+```text
+Vehicle Status
+
+Connection Status
+
+Current Mode
+
+GPS
+
+Battery
+
+Heading
+
+Ground Speed
+```
+
+---
+
+## Vehicle Control
+
+Buttons
+
+```text
+Connect
+
+Disconnect
+
+Arm
+
+Disarm
+```
+
+Mode selector
+
+```text
+MANUAL
+
+AUTO
+
+HOLD
+
+RTL
+```
+
+---
+
+## Telemetry Page
+
+Cards
+
+```text
+Latitude
+
+Longitude
+
+Heading
+
+Ground Speed
+
+Battery
+
+GPS Status
+
+Satellite Count
+
+Heartbeat
+```
+
+---
+
+## Logs Page
+
+Simple scrolling log
+
+```text
+14:30 Connected
+
+14:31 GPS Lock
+
+14:33 Armed
+
+14:35 AUTO
+
+14:40 HOLD
+```
+
+---
+
+# API
+
+```text
+GET  /telemetry
+
+GET  /vehicle
+
+POST /connect
+
+POST /disconnect
+
+POST /arm
+
+POST /disarm
+
+POST /mode
+```
+
+---
+
+# WebSocket
+
+Events
+
+```text
+telemetry
+
+connection
+
+mode
+
+log
+```
+
+---
+
+# Folder Structure
+
+```text
+backend/
+
+    main.py
+
+    connection/
+
+        serial_manager.py
+
+        heartbeat.py
+
+    mavlink/
+
+        client.py
+
+        parser.py
+
+    services/
+
+        telemetry_service.py
+
+        vehicle_service.py
+
+        logger_service.py
+
+    api/
+
+        telemetry.py
+
+        vehicle.py
+
+frontend/
+
+    pages/
+
+        Dashboard
+
+        Telemetry
+
+        Vehicle
+
+        Logs
+
+    components/
+
+        StatusBar
+
+        BatteryCard
+
+        GPSCard
+
+        HeadingCard
+
+        SpeedCard
+
+    services/
+
+        api.js
+
+        websocket.js
+```
+
+---
+
+# Success Criteria
+
+Phase 1 is complete when all of the following work reliably:
+
+* ✓ Cube Orange connects over USB.
+* ✓ Heartbeat is received continuously.
+* ✓ Connection loss is detected automatically.
+* ✓ Telemetry updates live without refreshing the page.
+* ✓ Arm and Disarm commands execute successfully.
+* ✓ Vehicle mode changes (MANUAL, AUTO, HOLD, RTL) work.
+* ✓ Dashboard reflects the current vehicle state in real time.
+* ✓ Basic event logs are recorded.
+
+---
+
+# Not in Phase 1
+
+Do **not** implement these yet:
+
+* Mission Planner (waypoint editor)
+* Mission upload/download
+* Mission start/pause/resume
+* Map view
+* Parameter editor
+* Vehicle setup/calibration
+* Health analytics
+* Graphs and charts
+* Camera feed
+* AI or computer vision
+* Mission history
+* User accounts
+* Configuration profiles
+
+---
+
+## Development Order
+
+I would implement Phase 1 in this sequence:
+
+1. **Backend**
+
+   * USB serial connection
+   * Heartbeat monitoring
+   * Telemetry parsing
+   * Arm/Disarm
+   * Mode changes
+
+2. **API**
+
+   * REST endpoints
+   * WebSocket telemetry stream
+
+3. **Frontend**
+
+   * Dashboard
+   * Live telemetry cards
+   * Vehicle control buttons
+   * Logs page
+
+Only after Phase 1 is stable would I begin **Phase 2: Mission Management**, which introduces mission upload, waypoint handling, start, pause, resume, RTL workflows, and mission progress monitoring. This staged approach keeps the foundation solid before adding mission-specific functionality.

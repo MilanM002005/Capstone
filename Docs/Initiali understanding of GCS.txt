@@ -1,0 +1,319 @@
+I think these are the right decisions. More importantly, they're consistent with each other. Your architecture now has a clear separation of responsibilities instead of trying to make the GCS replace the flight controller.
+
+This is the architecture I'd consider the "v1.0" baseline.
+
+```
+                    Touchscreen UI
+                   (Chromium Browser)
+                           │
+                 HTTP/WebSocket (localhost)
+                           │
+                    FastAPI Backend
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+Telemetry Service   Mission Service   Vehicle Service
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           │
+                  MAVLink Communication
+                      (PyMAVLink)
+                           │
+                     USB Serial Cable
+                           │
+                     Cube Orange
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+      GPS (M8N)      Telemetry Radio   Motors/Servos
+```
+
+A few things are now fixed.
+
+* The Cube Orange is responsible for autonomous navigation.
+* The GCS is responsible for supervision and operator interaction.
+* The Jetson is **not** driving the rover waypoint by waypoint.
+* The Jetson only tells the Cube **what** to do, not **how** to do it.
+
+That distinction will save a huge amount of development effort.
+
+---
+
+## Responsibilities
+
+Cube Orange
+Autonomous navigation
+Waypoint mission execution
+Left and right motor control for differential (skid) drive
+Speed and heading control
+GPS positioning and sensor fusion
+ArduRover failsafes
+AUTO, HOLD, RTL, and other flight mode management
+
+### Jetson Nano
+
+* Display UI
+* Read telemetry
+* Upload missions
+* Start mission
+* Pause mission
+* Resume mission
+* Return Home
+* Vehicle configuration
+* Logging
+* Future AI features
+
+Notice that almost everything on the Jetson is supervisory rather than low-level control.
+
+---
+
+## Software Stack
+
+I would now freeze the technology choices.
+
+```
+Frontend
+---------
+Chromium
+HTML
+CSS
+JavaScript
+React
+
+↓
+
+Backend
+
+FastAPI
+PyMAVLink
+
+↓
+
+Hardware
+
+Cube Orange
+```
+
+I would remove Node.js entirely.
+
+You no longer need
+
+* Express
+* Electron
+* Multiple Node processes
+
+One Python process can handle everything.
+
+---
+
+## Communication
+
+I would avoid polling from the frontend.
+
+Instead
+
+```
+Cube
+
+↓
+
+PyMAVLink
+
+↓
+
+Telemetry Manager
+
+↓
+
+Application State
+
+↓
+
+WebSocket
+
+↓
+
+React UI
+```
+
+Telemetry updates arrive continuously.
+
+The UI updates automatically.
+
+No page has to ask
+
+> "Has anything changed?"
+
+---
+
+## Pages
+
+I would structure the application like this.
+
+```
+Dashboard
+
+Mission Planner
+
+Mission Control
+
+Telemetry
+
+Vehicle Health
+
+Parameters
+
+Vehicle Setup
+
+Logs
+
+Settings
+
+About
+```
+
+This is close enough to Mission Planner that experienced users will feel comfortable, while being much cleaner and focused on your rover.
+
+---
+
+## Backend Modules
+
+```
+backend/
+
+connection/
+    serial_manager.py
+    heartbeat.py
+
+mavlink/
+    mavlink_client.py
+    mavlink_parser.py
+
+services/
+    telemetry_service.py
+    mission_service.py
+    vehicle_service.py
+    parameter_service.py
+    health_service.py
+
+storage/
+    config.py
+    mission_store.py
+    settings_store.py
+
+api/
+    telemetry.py
+    mission.py
+    vehicle.py
+    parameters.py
+
+main.py
+```
+
+Each folder has one responsibility.
+
+---
+
+## Frontend Modules
+
+```
+frontend/
+
+pages/
+    Dashboard
+    MissionPlanner
+    MissionControl
+    Telemetry
+    Health
+    Parameters
+    Setup
+    Logs
+    Settings
+
+components/
+    Map
+    StatusBar
+    VehicleCard
+    GPSCard
+    BatteryCard
+    Compass
+    Speed
+    MissionProgress
+
+services/
+    websocket.js
+    api.js
+```
+
+Again, each module has a single responsibility.
+
+---
+
+## One thing I'd change now
+
+You originally said:
+
+> read telemetry and paste these values onto the frontend
+
+I would **not** design it that way.
+
+Instead:
+
+```
+Cube
+
+↓
+
+Telemetry Service
+
+↓
+
+Application State
+
+↓
+
+Frontend
+```
+
+The frontend never talks directly to MAVLink.
+
+The frontend simply displays the current application state.
+
+This seems like a small distinction, but it becomes critical later when you add:
+
+* obstacle detection
+* battery warnings
+* mission recording
+* health monitoring
+* notifications
+* diagnostics
+
+Everything reads from one source of truth instead of every page parsing MAVLink independently.
+
+---
+
+## I think you're ready to start the design document
+
+At this point, the architecture is stable enough that I would stop making technical decisions and start documenting them.
+
+The first document I'd write is not the UI or API. It would be a comprehensive **Software Architecture Specification**. That document becomes the source of truth for the project and should define:
+
+1. Project Vision
+2. System Architecture
+3. Technology Stack
+4. Communication Architecture
+5. Software Architecture
+6. Backend Design
+7. Frontend Design
+8. Mission Execution Model
+9. State Management
+10. API Specification
+11. WebSocket Protocol
+12. UI Navigation
+13. Storage Design
+14. Error Handling
+15. Deployment on Jetson Nano
+16. Future Expansion
+
+Once that document is complete, implementation becomes much more mechanical because every module and interaction has already been specified. Given the scope of your capstone, that level of planning will significantly reduce redesign and integration issues later.
+
